@@ -1,0 +1,73 @@
+# demo_metal.ipynb
+
+# Title: METAL Docker Demo
+# Description: Demonstrates validating inputs and generating METAL scripts using mock data.
+
+from IPython.display import display, HTML
+import os
+import subprocess
+from pathlib import Path
+
+version = %env WORKSPACE_CDR
+my_bucket = os.getenv('WORKSPACE_BUCKET')
+
+# Assume metal_utils.py contains your helper functions
+from metal_utils import (
+    validate_saige_inputs,
+    extract_sample_sizes,
+    run_metal,
+    dsub_script
+)
+
+# -------------------------------
+# Setup demo input folder
+# -------------------------------
+demo_folder = Path("examples/sample_inputs")
+demo_folder.mkdir(parents=True, exist_ok=True)
+
+# Create tiny mock SAIGE-like files
+mock_ancestries = ['eas', 'amr']
+trait = "demo_trait"
+
+for anc in mock_ancestries:
+    anc_dir = demo_folder / anc / trait
+    anc_dir.mkdir(parents=True, exist_ok=True)
+    file_path = anc_dir / "gwas_results.tsv.gz"
+    
+    # Tiny gzipped file with required columns
+    content = (
+        "variant_id\neffect_allele\tother_allele\neffect_allele_frequency\n"
+        "p_value\tbeta\tstandard_error\tn_cases\tn_controls\n"
+        "rs1\tA\tG\t0.1\t0.05\t0.02\t0.01\t100\t200\n"
+    )
+    # Write gzipped
+    with open(file_path.with_suffix(".tsv"), "wt") as f:
+        f.write(content)
+    subprocess.run(f"gzip -f {file_path.with_suffix('.tsv')}", shell=True)
+
+# -------------------------------
+# Validate inputs
+# -------------------------------
+validated = validate_saige_inputs(trait, mock_ancestries, str(demo_folder))
+print("\nValidated inputs:")
+print(validated)
+
+# -------------------------------
+# Generate METAL command (not actually submitting jobs)
+# -------------------------------
+# Normally you would call run_metal(), but for demo we just print the dsub command
+# We'll monkeypatch dsub_script to just print the command for demonstration
+def demo_dsub_script(**kwargs):
+    print("Generated dsub command for METAL:")
+    for k, v in kwargs.items():
+        print(f"{k}: {v}")
+    return kwargs
+
+# Swap in demo version
+run_metal.__globals__['dsub_script'] = demo_dsub_script
+
+_ = run_metal(
+    trait=trait,
+    ancestries=mock_ancestries,
+    base_output_folder=str(demo_folder)
+)
