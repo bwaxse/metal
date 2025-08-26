@@ -20,7 +20,7 @@ RUN tar -xzf generic-metal-2011-03-25.tar.gz && ls -la
 
 RUN cd generic-metal && \
     ls -la && \
-    make all 2>&a | tee build.log && \
+    make all 2>&1 | tee build.log && \
     ls -la executables/ && \
     cp executables/metal /usr/local/bin/
 
