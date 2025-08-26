@@ -1,6 +1,6 @@
 # METAL Docker Workflow
 
-This repository provides a Dockerized workflow for running **METAL** meta-analysis using SAIGE-formatted GWAS results. It includes helper scripts in Python, a shell entrypoint, and a demo Jupyter notebook.
+This repository provides a Dockerized workflow for running **METAL** meta-analysis using SAIGE-formatted GWAS results. It includes a demo Jupyter notebook.
 
 ## Repository Structure
 ```metal/
