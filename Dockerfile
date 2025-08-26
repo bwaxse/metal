@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and build METAL from source
-RUN wget https://csg.sph.umich.edu/abecasis/metal/download/Linux-metal.tar.gz \
+RUN wget http://csg.sph.umich.edu/abecasis/metal/download/Linux-metal.tar.gz \
     && tar -xzf Linux-metal.tar.gz \
     && cd metal \
     && make \
