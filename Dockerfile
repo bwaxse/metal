@@ -1,7 +1,7 @@
-MAINTAINER bennett waxse (bennett.waxse@nih.gov)
-
 # Minimal Dockerfile for METAL meta-analysis
 FROM ubuntu:22.04
+
+MAINTAINER bennett waxse (bennett.waxse@nih.gov)
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
