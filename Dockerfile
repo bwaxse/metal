@@ -10,20 +10,23 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     zlib1g-dev \
-    libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and build METAL from source
 WORKDIR /tmp
-RUN wget -O generic-metal-2011-03-25.tar.gz http://csg.sph.umich.edu/abecasis/Metal/download/generic-metal-2011-03-25.tar.gz \
-    && tar -xzf generic-metal-2011-03-25.tar.gz \
-    && rm generic-metal-2011-03-25.tar.gz \
-    && cd generic-metal \
-    && make all \
-    && cp executables/metal /usr/local/bin/ \
-    && cd .. \
-    && rm -rf generic-metal
-    
+RUN wget -v -O generic-metal-2011-03-25.tar.gz http://csg.sph.umich.edu/abecasis/Metal/download/generic-metal-2011-03-25.tar.gz
+
+RUN tar -xzf generic-metal-2011-03-25.tar.gz && ls -la
+
+RUN cd generic-metal && \
+    ls -la && \
+    make all 2>&a | tee build.log && \
+    ls -la executables/ && \
+    cp executables/metal /usr/local/bin/
+
+# Cleanup
+RUN rm -rf /tmp/*
+
 # Verify installation
 RUN metal --help 2>&1 | head -10 || echo "METAL binary created"
 
