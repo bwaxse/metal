@@ -1,6 +1,5 @@
 # Minimal Dockerfile for METAL meta-analysis
 FROM ubuntu:22.04
-
 MAINTAINER bennett waxse (bennett.waxse@nih.gov)
 
 # Avoid interactive prompts during package installation
@@ -14,16 +13,21 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and build METAL from source
-RUN wget http://csg.sph.umich.edu/abecasis/metal/download/Linux-metal.tar.gz \
-    && tar -xzf Linux-metal.tar.gz \
-    && cd metal \
-    && make \
+WORKDIR /tmp
+RUN wget -O generic-metal-2011-03-25.tar.gz http://csg.sph.umich.edu/abecasis/Metal/download/generic-metal-2011-03-25.tar.gz \
+    && tar -xzf generic-metal-2011-03-25.tar.gz \
+    && rm generic-metal-2011-03-25.tar.gz \
+    && cd generic-metal \
+    && make all \
     && cp executables/metal /usr/local/bin/ \
     && cd .. \
-    && rm -rf metal Linux-metal.tar.gz
-
+    && rm -rf generic-metal
+    
 # Verify installation
-RUN metal --help || echo "METAL installed successfully"
+RUN metal --help 2>&1 | head -10 || echo "METAL binary created"
+
+# Set working directory back to root
+WORKDIR /
 
 # Default command
 CMD ["metal"]
