@@ -11,7 +11,8 @@ This repository provides a Dockerized workflow for running **METAL** meta-analys
 │ ├── demo_metal.ipynb # Jupyter notebook showing workflow with mock data
 │ └── sample_inputs/ # Tiny mock GWAS files for demonstration
 ├── README.md # This file
-└── .gitignore```
+└── .gitignore
+```
 
 ## Source Data
 ```base_output_folder/
@@ -21,7 +22,8 @@ This repository provides a Dockerized workflow for running **METAL** meta-analys
 ├── amr/
 │   └── trait1/
 │       └── gwas_results.tsv.gz
-└── ...```
+└── ...
+```
 
 ## Demo
 `demo_metal.ipynb` demonstrates how this can be used in the _All of Us_ Researcher Workbench
