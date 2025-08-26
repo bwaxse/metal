@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     zlib1g-dev \
+    libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and build METAL from source
