@@ -21,8 +21,5 @@ This repository provides a Dockerized workflow for running **METAL** meta-analys
 └── ...
 ```
 
-## Demo
-`demo_metal.ipynb` demonstrates how this can be used in the _All of Us_ Researcher Workbench
-
 ## License
 Released under the MIT License.
