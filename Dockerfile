@@ -6,14 +6,13 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Download, extract, and install the pre-compiled binary
 RUN curl -L -o /tmp/Linux-metal.tar.gz \
-    http://csg.sph.umich.edu/abecasis/metal/download/Linux-metal.tar.gz
+    http://csg.sph.umich.edu/abecasis/metal/download/Linux-metal.tar.gz && \
+    cd /tmp && \
+    tar -xzf Linux-metal.tar.gz && \
+    cp generic-metal/metal /usr/local/bin/ && \
+    chmod +x /usr/local/bin/metal && \
+    rm -rf /tmp/*
 
-RUN cd /tmp && tar -tzf Linux-metal.tar.gz
-
-RUN cd /tmp && tar -xzf Linux-metal.tar.gz && ls -la
-
-RUN find /tmp -name "metal" -type f
-
-# Default command
-CMD ["echo", "Debug complete - check logs above"]
+CMD ["metal"]
