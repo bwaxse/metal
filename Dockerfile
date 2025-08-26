@@ -18,11 +18,12 @@ RUN wget -v -O generic-metal-2011-03-25.tar.gz http://csg.sph.umich.edu/abecasis
 
 RUN tar -xzf generic-metal-2011-03-25.tar.gz && ls -la
 
-RUN cd generic-metal && \
-    ls -la && \
-    make all 2>&1 | tee build.log && \
-    ls -la executables/ && \
-    cp executables/metal /usr/local/bin/
+# Build step by step with error checking
+RUN cd generic-metal && ls -la
+RUN cd generic-metal && cat Makefile || echo "No Makefile found"
+RUN cd generic-metal && make all
+RUN cd generic-metal && ls -la executables/
+RUN cd generic-metal && cp executables/metal /usr/local/bin/
 
 # Cleanup
 RUN rm -rf /tmp/*
