@@ -1,4 +1,6 @@
-# demo_metal.ipynb
+# METAL Docker Demo
+
+**Description:** Demonstrates validating inputs and generating METAL scripts using mock data.
 
 # Title: METAL Docker Demo
 # Description: Demonstrates validating inputs and generating METAL scripts using mock data.
@@ -271,56 +273,170 @@ def view_dsub_logs(log_path):
     print("\n=== STDERR ===") 
     subprocess.run(['gsutil', 'cat', f'{base_path}-stderr.log'])
 
+## Run Metal
+%%writefile run_metal.sh
 
-# -------------------------------
-# Setup demo input folder
-# -------------------------------
-demo_folder = Path("examples/sample_inputs")
-demo_folder.mkdir(parents=True, exist_ok=True)
+#!/bin/bash
+set -euo pipefail
 
-# Create tiny mock SAIGE-like files
-mock_ancestries = ['eas', 'amr']
-trait = "demo_trait"
+echo "Starting METAL meta-analysis for ${TRAIT}"
+echo "Number of input files: ${N_FILES}"
 
-for anc in mock_ancestries:
-    anc_dir = demo_folder / anc / trait
-    anc_dir.mkdir(parents=True, exist_ok=True)
-    file_path = anc_dir / "gwas_results.tsv.gz"
+# Parse ancestries
+IFS=',' read -ra INPUTS <<< "${INPUTS}"
+
+# Parse sample sizes
+IFS=',' read -ra SIZES <<< "${SAMPLE_SIZES}"
+
+echo "Preprocessing files to add ancestry-specific n_total columns..."
+PROCESSED_FILES=()
+
+# Pre-processing adds sample size via n_cases and n_controls extracted from SAIGE GWAS results 
+for i in "${!INPUTS[@]}"; do
+    var_name="${INPUTS[$i]}"
+    input_file="${!var_name}"
+    n_total="${SIZES[$i]}"
+    processed_file="/tmp/processed_file_${i}.tsv"
     
-    # Tiny gzipped file with required columns
-    content = (
-        "variant_id\neffect_allele\tother_allele\neffect_allele_frequency\n"
-        "p_value\tbeta\tstandard_error\tn_cases\tn_controls\n"
-        "rs1\tA\tG\t0.1\t0.05\t0.02\t0.01\t100\t200\n"
+    echo "Processing file $((i+1)): ${input_file} (n_total=${n_total})"
+    
+    # Check if file exists
+    if [[ ! -f "${input_file}" ]]; then
+        echo "ERROR: Input file not found: ${input_file}"
+        echo "Available files in /mnt/data/input/:"
+        ls -la /mnt/data/input/ || echo "Input directory not accessible"
+        exit 1
+    fi
+    
+    # Add constant n_total column for this ancestry
+    if [[ "${input_file}" == *.gz ]]; then
+        gzip -dc "${input_file}"
+    else
+        cat "${input_file}"
+    fi | awk -F'\t' -v OFS='\t' -v n_total="${n_total}" '
+        NR==1 { print $0, "n_total"; next }
+               { print $0, n_total }' > "${processed_file}"
+    
+    PROCESSED_FILES+=("/processed_file_${i}.tsv")
+    
+    # Verify output
+    n_lines=$(wc -l < "${processed_file}")
+    echo "  Created ${processed_file} with ${n_lines} lines"
+done
+
+# Convert processed files array to comma-separated string
+PROCESSED_FILES_STR=$(IFS=','; echo "${PROCESSED_FILES[*]}")
+echo "Running METAL with processed files: ${PROCESSED_FILES_STR}"
+
+# Create a METAL script dynamically
+METAL_SCRIPT="${OUTPUT_PATH}/metal_script.txt"
+cat > "${METAL_SCRIPT}" <<EOF
+MARKER vid
+WEIGHT n_total
+ALLELE effect_allele other_allele
+FREQ effect_allele_frequency
+PVAL p_value
+EFFECT beta
+STDERR standard_error
+SEPARATOR TAB
+SCHEME STDERR
+
+# Auto-flip alleles based on frequency
+AVERAGEFREQ ON
+MINMAXFREQ ON
+
+$(for file in "${PROCESSED_FILES[@]}"; do echo "PROCESS $file"; done)
+
+OUTFILE ${OUT_PREF} .tsv
+ANALYZE HETEROGENEITY
+QUIT
+EOF
+
+echo "Metal script created"
+
+# Run METAL
+metal "${METAL_SCRIPT}"
+
+mv ${OUT_PREF}1.tsv "${OUTPUT_PATH}/"
+mv ${OUT_PREF}1.tsv.info "${OUTPUT_PATH}/"
+
+# List all output files
+echo "Final contents of OUTPUT_PATH (${OUTPUT_PATH}):"
+ls -lh "${OUTPUT_PATH}" || echo "OUTPUT_PATH not accessible"
+
+echo "METAL analysis completed successfully for ${TRAIT}"
+
+
+def run_metal(trait, ancestries, base_output_folder):
+    """
+    Run METAL meta-analysis with SAIGE-formatted inputs
+    """
+    artifact_registry = os.getenv('ARTIFACT_REGISTRY_DOCKER_REPO', '')
+            
+    # Validate SAIGE inputs
+    validated_inputs = validate_saige_inputs(trait, ancestries, base_output_folder)
+    if not validated_inputs:
+        return None
+
+    out_dir = f'{base_output_folder}/metal/{trait}'
+
+    # METAL configuration
+    env_dict = {
+        'TRAIT': trait,
+        'OUT_PREF': trait,
+    }
+
+    in_dict = {}
+    file_list = []
+    sample_sizes = []
+    
+    for i, (anc, file_info) in enumerate(validated_inputs.items(), 1):
+        in_dict[f'INPUT_{anc.upper()}'] = file_info['path']
+        file_list.append(file_info['path'])
+        sample_sizes.append(str(file_info['n_total']))
+    
+    # Pass file list and sample sizes as comma-separated strings
+    env_dict['INPUTS'] = ",".join(in_dict.keys())
+    env_dict['SAMPLE_SIZES'] = ','.join(sample_sizes)  # n_total per ancestry
+    env_dict['N_FILES'] = str(len(file_list))
+
+    out_dirs = {
+        'OUTPUT_PATH': out_dir
+    }
+
+    return dsub_script(
+        label=f'metal_{trait}',
+        machine_type='n2d-standard-8',
+        envs=env_dict,
+        in_params=in_dict,
+        out_params=None,
+        out_dirs=out_dirs,
+        boot_disk=100,
+        disk_size=150,
+        image=f'{artifact_registry}/bwaxse/metal',
+        script='run_metal.sh',
+        preemptible=True
     )
-    # Write gzipped
-    with open(file_path.with_suffix(".tsv"), "wt") as f:
-        f.write(content)
-    subprocess.run(f"gzip -f {file_path.with_suffix('.tsv')}", shell=True)
 
-# -------------------------------
-# Validate inputs
-# -------------------------------
-validated = validate_saige_inputs(trait, mock_ancestries, str(demo_folder))
-print("\nValidated inputs:")
-print(validated)
 
-# -------------------------------
-# Generate METAL command (not actually submitting jobs)
-# -------------------------------
-# Normally you would call run_metal(), but for demo we just print the dsub command
-# We'll monkeypatch dsub_script to just print the command for demonstration
-def demo_dsub_script(**kwargs):
-    print("Generated dsub command for METAL:")
-    for k, v in kwargs.items():
-        print(f"{k}: {v}")
-    return kwargs
+# Ancestry-specific null model
+for trait in ['allergies_ehr']:
+    _ = run_metal(
+        trait=trait,
+        ancestries=['eas', 'amr'], #'amr', 'afr', 'eur', 
+        base_output_folder=output_folder
+    )
 
-# Swap in demo version
-run_metal.__globals__['dsub_script'] = demo_dsub_script
 
-_ = run_metal(
-    trait=trait,
-    ancestries=mock_ancestries,
-    base_output_folder=str(demo_folder)
-)
+check_dsub_status(full=False)
+
+
+
+job_details(job='')
+
+
+
+log="gs://fc-secure-5314b258-8205-43ab-b5bc-fc383a8fad91/dsub/logs/metal-allergies-ehr/bwaxse/20250826/metal-alle--bwaxse--250826-184759-58-task-None.log"
+view_dsub_logs(log)
+
+
