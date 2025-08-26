@@ -1,5 +1,13 @@
 name: Build and Push Docker image
-
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: |
+      ${{ secrets.DOCKERHUB_USERNAME }}/metal:latest
+      ${{ secrets.DOCKERHUB_USERNAME }}/metal:${{ github.sha }}
+      
 on:
   push:
     branches: [ "main" ]
