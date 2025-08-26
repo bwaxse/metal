@@ -5,9 +5,7 @@ This repository provides a Dockerized workflow for running **METAL** meta-analys
 ## Repository Structure
 ```metal/
 ├── Dockerfile # Dockerfile to build METAL image
-├── run_metal.sh # Shell script to run METAL analysis
-├── metal_utils.py # Python helper functions for validation and job submission
-├── examples/ # Example usage and demo files
+├── example/ # Example usage and demo files
 │ ├── demo_metal.ipynb # Jupyter notebook showing workflow with mock data
 │ └── sample_inputs/ # Tiny mock GWAS files for demonstration
 ├── README.md # This file
